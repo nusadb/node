@@ -1,0 +1,24 @@
+{
+  "name": "nusadb",
+  "version": "0.1.0",
+  "description": "Node.js / TypeScript driver for NusaDB (Nusa Wire Protocol)",
+  "main": "src/index.js",
+  "types": "src/index.d.ts",
+  "type": "commonjs",
+  "scripts": {
+    "test": "node test/test.js"
+  },
+  "files": [
+    "src/"
+  ],
+  "keywords": [
+    "nusadb",
+    "database",
+    "sql",
+    "driver"
+  ],
+  "license": "Apache-2.0",
+  "engines": {
+    "node": ">=16"
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "name": "nusadb-orm",
+  "version": "0.5.0",
+  "description": "A small native ORM / query builder for NusaDB, on the nusadb Node driver",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "license": "Apache-2.0",
+  "scripts": {
+    "test": "node test.js",
+    "typecheck": "tsc --noEmit --strict --skipLibCheck --moduleResolution bundler --module ESNext --target ES2020 --lib ES2020 types-test.ts"
+  },
+  "keywords": ["nusadb", "orm", "query-builder", "sql"],
+  "engines": {
+    "node": ">=16"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}
