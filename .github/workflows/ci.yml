@@ -1,0 +1,68 @@
+name: CI
+
+on:
+  push:
+    branches: [master, 'ci/**']
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  driver:
+    name: driver (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['16', '18', '20', '22']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # The test suite (test/test.js) boots a real `nusadb-server` binary, which is not
+      # present in this repository, so it cannot run here. These checks are what can be
+      # verified standalone: the package loads, and the published tarball is complete.
+      - name: Load the driver
+        run: node -e "const d = require('./src/index'); if (typeof d.connect !== 'function') { throw new Error('connect() missing from the driver export'); }"
+
+      - name: Pack (dry run)
+        run: npm pack --dry-run
+
+  orm:
+    name: orm (node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: ['16', '18', '20', '22']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # nusadb-orm depends on the `nusadb` driver by package name. Installing it from the
+      # tarball this repo actually produces (rather than from the registry) verifies two
+      # things at once: the ORM resolves its dependency, and the driver tarball is
+      # self-contained. A stale published version can never mask a break here.
+      - name: Install the ORM against the locally packed driver
+        run: |
+          tarball="$(npm pack --silent | tail -1)"
+          echo "packed: $tarball"
+          npm --prefix orm install "$PWD/$tarball" --no-save
+          npm --prefix orm install
+
+      - name: Load the ORM
+        run: node -e "const { Orm, Migrator } = require('./orm/index.js'); if (typeof Orm !== 'function' || typeof Migrator !== 'function') { throw new Error('Orm/Migrator missing from the nusadb-orm export'); }"
+
+      - name: Typecheck
+        run: npm --prefix orm run typecheck
+
+      - name: Pack (dry run)
+        run: npm --prefix orm pack --dry-run

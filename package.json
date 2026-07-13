@@ -17,6 +17,14 @@
     "sql",
     "driver"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nusadb/node.git"
+  },
+  "homepage": "https://github.com/nusadb/node#readme",
+  "bugs": {
+    "url": "https://github.com/nusadb/node/issues"
+  },
   "license": "Apache-2.0",
   "engines": {
     "node": ">=16"
