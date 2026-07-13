@@ -24,7 +24,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      id-token: write # required for npm provenance
     steps:
       - uses: actions/checkout@v4
 
@@ -67,7 +66,11 @@ jobs:
           if npm view "nusadb@$version" version >/dev/null 2>&1; then
             echo "nusadb@$version is already on the registry; skipping."
           else
-            npm publish --provenance --access public
+            # No --provenance: npm only generates attestations from a public repository, and
+            # this one is private. The package itself is public either way. If the repo is
+            # ever made public, add `--provenance` back here and to the orm step below, and
+            # restore `id-token: write` to this job's permissions.
+            npm publish --access public
           fi
 
       - name: Wait for nusadb to be resolvable
@@ -92,7 +95,7 @@ jobs:
           if npm view "nusadb-orm@$version" version >/dev/null 2>&1; then
             echo "nusadb-orm@$version is already on the registry; skipping."
           else
-            npm --prefix orm publish --provenance --access public
+            npm --prefix orm publish --access public
           fi
 
   github-release:
