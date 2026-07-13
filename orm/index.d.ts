@@ -4,7 +4,7 @@
 // `select().all()` resolves to `User[]`, `first()` to `User | null`, and so on. The runtime is
 // plain JavaScript; these declarations add no behavior.
 
-import type { Connection, ConnectOptions, Param, QueryResult } from '../src/index';
+import type { Connection, ConnectOptions, Param, QueryResult } from 'nusadb';
 
 /** Default row shape when a model is not parameterized. */
 export type Row = Record<string, unknown>;

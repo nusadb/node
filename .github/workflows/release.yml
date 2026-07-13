@@ -1,0 +1,108 @@
+name: Release
+
+# Publishes both packages in this repo to npm:
+#   nusadb      (root)  -- the driver
+#   nusadb-orm  (orm/)  -- the ORM, which depends on the driver by name
+#
+# The driver is published FIRST: nusadb-orm declares `nusadb` as a runtime dependency, so
+# that version has to exist on the registry before the ORM referencing it goes up.
+#
+#   git tag v0.1.0 && git push origin v0.1.0
+#
+# Requires the NPM_TOKEN secret (an npm automation token with publish rights).
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: read
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # required for npm provenance
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Verify the driver version matches the tag
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          pkg="$(node -p "require('./package.json').version")"
+          if [ "$tag" != "$pkg" ]; then
+            echo "::error::tag v$tag does not match package.json version $pkg"
+            exit 1
+          fi
+          echo "releasing nusadb@$pkg"
+
+      - name: Build the driver tarball and install the ORM against it
+        run: |
+          tarball="$(npm pack --silent | tail -1)"
+          echo "TARBALL=$PWD/$tarball" >> "$GITHUB_ENV"
+          npm --prefix orm install "$PWD/$tarball" --no-save
+          npm --prefix orm install
+
+      # Gate the release on everything that is verifiable without a live server. The test
+      # suites here are integration tests that boot a real `nusadb-server` binary, which
+      # this repository does not contain, so they cannot serve as the release gate.
+      - name: Verify both packages load and typecheck
+        run: |
+          node -e "const d = require('./src/index'); if (typeof d.connect !== 'function') throw new Error('driver export broken');"
+          node -e "const { Orm, Migrator } = require('./orm/index.js'); if (typeof Orm !== 'function' || typeof Migrator !== 'function') throw new Error('orm export broken');"
+          npm --prefix orm run typecheck
+
+      - name: Publish nusadb
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          if npm view "nusadb@$version" version >/dev/null 2>&1; then
+            echo "nusadb@$version is already on the registry; skipping."
+          else
+            npm publish --provenance --access public
+          fi
+
+      - name: Wait for nusadb to be resolvable
+        run: |
+          version="$(node -p "require('./package.json').version")"
+          for attempt in 1 2 3 4 5 6 7 8 9 10; do
+            if npm view "nusadb@$version" version >/dev/null 2>&1; then
+              echo "nusadb@$version is live."
+              exit 0
+            fi
+            echo "not visible yet (attempt $attempt/10); waiting 15s ..."
+            sleep 15
+          done
+          echo "::error::nusadb@$version never became visible on the registry"
+          exit 1
+
+      - name: Publish nusadb-orm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          version="$(node -p "require('./orm/package.json').version")"
+          if npm view "nusadb-orm@$version" version >/dev/null 2>&1; then
+            echo "nusadb-orm@$version is already on the registry; skipping."
+          else
+            npm --prefix orm publish --provenance --access public
+          fi
+
+  github-release:
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" --generate-notes --verify-tag

@@ -7,7 +7,7 @@
 // the protocol 1.1 per-column type metadata (`columnTypes`) the driver returns. No third-party
 // database dialect or identity is involved.
 
-const { connect } = require('../src/index');
+const { connect } = require('nusadb');
 
 /** Quote an SQL identifier (double-quote, doubling any embedded quote). */
 function quoteIdent(name) {
