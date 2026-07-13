@@ -95,7 +95,11 @@ jobs:
           if npm view "nusadb-orm@$version" version >/dev/null 2>&1; then
             echo "nusadb-orm@$version is already on the registry; skipping."
           else
-            npm --prefix orm publish --access public
+            # cd, not --prefix: `npm publish` and `npm pack` ignore --prefix and always
+            # operate on the working directory. `npm --prefix orm publish` reads the version
+            # from orm/package.json but uploads the ROOT package -- which fails as a
+            # duplicate publish of nusadb rather than doing anything to nusadb-orm.
+            cd orm && npm publish --access public
           fi
 
   github-release:

@@ -64,5 +64,8 @@ jobs:
       - name: Typecheck
         run: npm --prefix orm run typecheck
 
+      # cd, not --prefix: `npm pack` ignores --prefix and packs the working directory, so
+      # `npm --prefix orm pack` would silently pack the root driver instead of the ORM and
+      # this check would never look at orm/ at all.
       - name: Pack (dry run)
-        run: npm --prefix orm pack --dry-run
+        run: cd orm && npm pack --dry-run
